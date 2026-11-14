@@ -11,11 +11,15 @@ st.set_page_config(
 # El resto del código de carga de datos y visualización...
 @st.cache_data(ttl=60)
 def cargar_datos_cruce():
-    sheet_id = "T1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs/edit?hl=es&gid=74280589#gid=74280589"  # Poné acá el ID de tu Google Sheet
-    sheet_name = "Resultado_Cruce"
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-    df = pd.read_csv(url)
-    return df
+    try:
+        sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs"  # ID de tu planilla actual
+        sheet_name = "Resultado_Cruce" # Asegúrate de que esta solapa exista en tu Google Sheet con los datos cruzados
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        df = pd.read_csv(url)
+        return df
+    except Exception as e:
+        st.warning("⚠️ No se pudo leer la solapa Resultado_Cruce en vivo. Verificá que la solapa exista y el archivo sea accesible.")
+        return pd.DataFrame()
 
 df = cargar_datos_cruce()
 
