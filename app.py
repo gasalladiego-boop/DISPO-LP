@@ -32,10 +32,14 @@ except Exception as e:
     df_cruce = pd.DataFrame()
     df_pendientes = pd.DataFrame()
 
+# Limpieza estricta de nombres de columnas
 if not df_cruce.empty:
     df_cruce.columns = df_cruce.columns.str.strip()
 if not df_pendientes.empty:
     df_pendientes.columns = df_pendientes.columns.str.strip()
+    # Renombramos por seguridad si quedó alguna cabecera malformada
+    if len(df_pendientes.columns) >= 4:
+        df_pendientes.columns = ['Tipo de Orden', 'Appointment', 'Nodo HFC', 'Estado']
 
 # --- DISTRIBUCIÓN EN 2 COLUMNAS PARA LA PANTALLA PRINCIPAL ---
 col1, col2 = st.columns(2)
