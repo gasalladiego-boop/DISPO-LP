@@ -32,7 +32,6 @@ except Exception as e:
     df_cruce = pd.DataFrame()
     df_pendientes = pd.DataFrame()
 
-# Limpiamos espacios en blanco en los nombres de columnas de los dataframes
 if not df_cruce.empty:
     df_cruce.columns = df_cruce.columns.str.strip()
 if not df_pendientes.empty:
@@ -41,29 +40,32 @@ if not df_pendientes.empty:
 # --- DISTRIBUCIÓN EN 2 COLUMNAS PARA LA PANTALLA PRINCIPAL ---
 col1, col2 = st.columns(2)
 
-# --- COLUMNA 1: MÓVILES LIBRES (Sin Tareas) ---
+# --- COLUMNA 1: ESTADO DE MÓVILES (Libres y Ocupados con actividad) ---
 with col1:
     st.subheader("🟢 Móviles Libres")
-    
     if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
         df_libres = df_cruce[df_cruce['Estado Actual'].str.contains("LIBRE", na=False)]
-        
         if not df_libres.empty:
             st.success(f"Disponibles: {len(df_libres)} móviles")
             st.dataframe(df_libres[['ID Técnico', 'Nombre', 'Rotación']], use_container_width=True, hide_index=True)
         else:
-            st.info("Todos los móviles se encuentran ocupados en este momento.")
-    else:
-        st.warning("Cargando datos de móviles...")
+            st.info("Todos los móviles se encuentran ocupados.")
+    
+    st.subheader("🚗 Móviles Ocupados (Con Actividad)")
+    if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
+        df_ocupados = df_cruce[df_cruce['Estado Actual'].str.contains("OCUPADO", na=False)]
+        if not df_ocupados.empty:
+            st.warning(f"Ocupados: {len(df_ocupados)} móviles")
+            st.dataframe(df_ocupados[['ID Técnico', 'Nombre', 'Cant. Tareas', 'Detalle de Tareas']], use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay móviles ocupados.")
 
 # --- COLUMNA 2: RESUMEN DE CITAS SIN ASIGNAR ---
 with col2:
     st.subheader("📌 Citas Sin Asignar")
-    
     if not df_pendientes.empty:
         total_pendientes = len(df_pendientes)
         st.warning(f"Total pendientes: {total_pendientes}")
-        
         if 'Tipo de Orden' in df_pendientes.columns:
             conteo_tipos = df_pendientes['Tipo de Orden'].value_counts()
             st.write("Desglose por tipo:")
@@ -73,14 +75,13 @@ with col2:
 
 st.markdown("---")
 
-# --- SECCIÓN INFERIOR: TABLA GENERAL DE CITAS SIN ASIGNAR CON FILTROS ---
+# --- SECCIÓN INFERIOR: TABLA GENERAL DE CITAS SIN ASIGNAR ---
 st.subheader("📋 Detalle de Citas Sin Asignar (Correctivos, Salud, MPI, Indisponibilidad)")
 
 if not df_pendientes.empty:
     if 'Tipo de Orden' in df_pendientes.columns:
         tipos_disponibles = df_pendientes['Tipo de Orden'].unique()
         filtro_tipo = st.multiselect("Filtrar por Tipo de Tarea:", options=tipos_disponibles, default=tipos_disponibles)
-        
         df_filtrado = df_pendientes[df_pendientes['Tipo de Orden'].isin(filtro_tipo)]
         st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
     else:
