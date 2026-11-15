@@ -9,7 +9,7 @@ st.title("🚀 Panel de Control Operativo - La Plata")
 @st.cache_data(ttl=60)
 def cargar_datos():
     # ⚠️ REEMPLAZÁ 'TU_GOOGLE_SHEET_ID' por el ID real de tu planilla de Google Sheets
-    sheet_id = "TU_GOOGLE_SHEET_ID"
+    sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs/edit?hl=es&gid=1056137558#gid=1056137558"
     url_cruce = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Resultado_Cruce"
     url_pendientes = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Pendientes_Asignar"
     
