@@ -1,64 +1,57 @@
 import streamlit as st
 import pandas as pd
 
-# Configuración de la página (esto debe ir bien arriba)
-st.set_page_config(
-    page_title="Control Operativo - Despacho de Técnicos",
-    page_icon="🚀",
-    layout="wide"
-)
+# Manteniendo tu lectura o conexión a Firebase / Google Sheets:
+# df_cruce = ... (solapa Resultado_Cruce)
+# df_pendientes = ... (solapa Pendientes_Asignar)
 
-# El resto del código de carga de datos y visualización...
-@st.cache_data(ttl=60)
-def cargar_datos_cruce():
-    try:
-        sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs"  # ID de tu planilla actual
-        sheet_name = "Resultado_Cruce" # Asegúrate de que esta solapa exista en tu Google Sheet con los datos cruzados
-        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-        df = pd.read_csv(url)
-        return df
-    except Exception as e:
-        st.warning("⚠️ No se pudo leer la solapa Resultado_Cruce en vivo. Verificá que la solapa exista y el archivo sea accesible.")
-        return pd.DataFrame()
+st.title("🚀 Panel de Control Operativo - La Plata")
 
-df = cargar_datos_cruce()
+# --- DISTRIBUCIÓN EN 2 COLUMNAS PARA UNA VISTA RÁPIDA EN PANTALLA PRINCIPAL ---
+col1, col2 = st.columns(2)
 
-# --- MÉTRICAS SUPERIORES ---
-total_tecnicos = len(df)
-libres_df = df[df["Estado Actual"].str.contains("LIBRE")]
-ocupados_df = df[~df["Estado Actual"].str.contains("LIBRE")]
-cant_libres = len(libres_df)
-cant_ocupados = len(ocupados_df)
+# --- COLUMNA 1: MÓVILES LIBRES (Sin Tareas) ---
+with col1:
+    st.subheader("🟢 Móviles Libres")
+    
+    if 'Estado Actual' in df_cruce.columns:
+        df_libres = df_cruce[df_cruce['Estado Actual'].str.contains("LIBRE", na=False)]
+        
+        if not df_libres.empty:
+            st.success(f"Disponibles: {len(df_libres)} móviles")
+            st.dataframe(df_libres[['ID Técnico', 'Nombre', 'Rotación']], use_container_width=True, hide_index=True)
+        else:
+            st.info("Todos los móviles están ocupados.")
 
-col1, col2, col3 = st.columns(3)
-col1.metric("👷 Técnicos Operativos Hoy", total_tecnicos)
-col2.metric("🔴 Técnicos Libres (Sin Tareas)", cant_libres, delta_color="inverse")
-col3.metric("🟢 Técnicos Ocupados", cant_ocupados)
-
-st.markdown("---")
-
-# --- SECCIÓN CRÍTICA: TÉCNICOS LIBRES ---
-st.subheader("🚨 Personal Disponible para Reasignación Inmediata")
-if cant_libres > 0:
-    st.warning(f"Hay **{cant_libres} técnicos** operativos que todavía no tienen tareas asignadas en la jornada:")
-    for index, row in libres_df.iterrows():
-        st.markdown(f"- **{row['ID Técnico']} - {row['Nombre']}** *(Turno: {row['Rotación']})*")
-else:
-    st.success("✅ ¡Excelente! No hay técnicos ociosos en este momento; todos tienen carga asignada.")
+# --- COLUMNA 2: RESUMEN DE PENDIENTES ---
+with col2:
+    st.subheader("📌 Citas Sin Asignar")
+    
+    if not df_pendientes.empty:
+        total_pendientes = len(df_pendientes)
+        st.warning(f"Total pendientes: {total_pendientes}")
+        
+        # Métrica rápida por tipo de tarea (Salud, MPI, Correctivo, Indisponibilidad)
+        if 'Tipo de Orden' in df_pendientes.columns:
+            conteo_tipos = df_pendientes['Tipo de Orden'].value_counts()
+            st.write("Desglose por tipo:")
+            st.json(conteo_tipos.to_dict(), expanded=False)
+    else:
+        st.success("¡Sin pendientes de asignación!")
 
 st.markdown("---")
 
-# --- TABLA GENERAL DE ESTADOS ---
-st.subheader("📋 Detalle Completo de Recursos y Tareas")
-filtro_estado = st.selectbox("Filtrar por estado:", ["Todos", "LIBRE (Sin Tareas)", "OCUPADO"])
+# --- SECCIÓN INFERIOR: TABLA GENERAL DE CITAS SIN ASIGNAR CON FILTROS ---
+st.subheader("📋 Detalle de Citas Sin Asignar (Correctivos, Salud, MPI, Indisponibilidad)")
 
-if filtro_estado != "Todos":
-    df_filtrado = df[df["Estado Actual"] == filtro_estado]
+if not df_pendientes.empty:
+    if 'Tipo de Orden' in df_pendientes.columns:
+        tipos_disponibles = df_pendientes['Tipo de Orden'].unique()
+        filtro_tipo = st.multiselect("Filtrar por Tipo de Tarea:", options=tipos_disponibles, default=tipos_disponibles)
+        
+        df_filtrado = df_pendientes[df_pendientes['Tipo de Orden'].isin(filtro_tipo)]
+        st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
+    else:
+        st.dataframe(df_pendientes, use_container_width=True, hide_index=True)
 else:
-    df_filtrado = df
-
-st.dataframe(df_filtrado, use_container_width=True)
-
-if st.button("🔄 Actualizar Datos"):
-    st.cache_data.clear()
-    st.rerun()
+    st.success("¡Excelente! No hay citas pendientes sin asignar en este momento.")
