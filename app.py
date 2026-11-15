@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 
 st.set_page_config(page_title="Panel Operativo La Plata", layout="wide")
 
@@ -41,7 +42,6 @@ if not df_pendientes.empty:
         df_pendientes.columns = ['Tipo de Orden', 'Appointment', 'Nodo HFC', 'Estado']
 
 # --- ASIGNACIÓN INTELIGENTE DE TURNO (MAÑANA / TARDE) ---
-# Lista oficial de móviles de la tarde proporcionada por Diego
 moviles_tarde = [
     "12LPR026", "12LPR028", "12LPR035", "12LPR046", 
     "12LPR040", "12LPR048", "12LPR002", "12LPR047", 
@@ -52,18 +52,31 @@ def asignar_turno(id_tec):
     if pd.isna(id_tec):
         return "Mañana"
     id_limpio = str(id_tec).strip()
-    if id_limpio in moviles_tarde:
-        return "Tarde"
-    else:
-        return "Mañana"
+    return "Tarde" if id_limpio in moviles_tarde else "Mañana"
 
 if not df_cruce.empty and 'ID Técnico' in df_cruce.columns:
-    # Insertamos la columna Turno al principio para diferenciar rápido
     df_cruce['Turno'] = df_cruce['ID Técnico'].apply(asignar_turno)
-    # Reordenamos columnas para que Turno quede bien visible al inicio
-    cols = ['Turno', 'ID Técnico', 'Nombre', 'Rotación', 'Estado Actual', 'Cant. Tareas', 'Detalle de Tareas']
-    cols_existentes = [c for c in cols if c in df_cruce.columns]
-    df_cruce = df_cruce[cols_existentes]
+
+# --- LIMPIEZA DE DETALLE DE TAREAS PARA MOSTRAR CORTO Y SEPARADO ---
+def limpiar_detalle_tareas(detalle):
+    if pd.isna(detalle) or not str(detalle).strip():
+        return "-", "-"
+    
+    texto = str(detalle).split('|')[0].strip()
+    
+    match_nodo = re.search(r'Nodo:\s*([A-Z0-9]+)', texto)
+    nodo_limpio = match_nodo.group(1) if match_nodo else "-"
+    
+    actividad_corta = re.sub(r'\(Nodo:.*?\)', '', texto).replace('- HFC -', '-').strip()
+    if actividad_corta.endswith('-'):
+        actividad_corta = actividad_corta[:-1].strip()
+        
+    return actividad_corta, nodo_limpio
+
+if not df_cruce.empty and 'Detalle de Tareas' in df_cruce.columns:
+    resultados_limpios = df_cruce['Detalle de Tareas'].apply(limpiar_detalle_tareas)
+    df_cruce['Actividad'] = [r[0] for r in resultados_limpios]
+    df_cruce['Nodo HFC'] = [r[1] for r in resultados_limpios]
 
 
 # --- SECCIÓN PRINCIPAL: MÓVILES LIBRES Y OCUPADOS ---
@@ -87,13 +100,17 @@ with col2:
         df_ocupados = df_cruce[df_cruce['Estado Actual'].str.contains("OCUPADO", na=False)]
         if not df_ocupados.empty:
             st.warning(f"Ocupados: {len(df_ocupados)} móviles")
-            st.dataframe(df_ocupados[['Turno', 'ID Técnico', 'Nombre', 'Cant. Tareas', 'Detalle de Tareas']], use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_ocupados[['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Nodo HFC', 'Cant. Tareas']], 
+                use_container_width=True, 
+                hide_index=True
+            )
         else:
             st.info("No hay móviles ocupados.")
 
 st.markdown("---")
 
-# --- SECCIÓN DE CITAS SIN ASIGNAR (Reemplaza el cuadro viejo por el detalle directo) ---
+# --- SECCIÓN DE CITAS SIN ASIGNAR (Corregido sin error de sintaxis) ---
 st.subheader("📋 Detalle de Citas Sin Asignar (Correctivos, Salud, MPI, Indisponibilidad)")
 
 if not df_pendientes.empty:
