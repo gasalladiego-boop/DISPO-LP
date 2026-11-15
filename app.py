@@ -10,13 +10,9 @@ st.title("🚀 Panel de Control Operativo - La Plata")
 def cargar_datos():
     sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs"
     
-    # Usamos el parámetro gid específico de cada solapa si lo tenés, o el nombre de la solapa por exportación csv
-    # URL para Resultado_Cruce
     url_cruce = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Resultado_Cruce"
-    # URL para Pendientes_Asignar
     url_pendientes = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Pendientes_Asignar"
     
-    # Agregamos on_bad_lines='skip' o engine='python' para que las comas internas en celdas no rompan la lectura
     try:
         df_cruce = pd.read_csv(url_cruce, on_bad_lines='skip')
     except Exception:
@@ -36,6 +32,12 @@ except Exception as e:
     df_cruce = pd.DataFrame()
     df_pendientes = pd.DataFrame()
 
+# Limpiamos espacios en blanco en los nombres de columnas de los dataframes
+if not df_cruce.empty:
+    df_cruce.columns = df_cruce.columns.str.strip()
+if not df_pendientes.empty:
+    df_pendientes.columns = df_pendientes.columns.str.strip()
+
 # --- DISTRIBUCIÓN EN 2 COLUMNAS PARA LA PANTALLA PRINCIPAL ---
 col1, col2 = st.columns(2)
 
@@ -52,7 +54,7 @@ with col1:
         else:
             st.info("Todos los móviles se encuentran ocupados en este momento.")
     else:
-        st.warning("Cargando datos de móviles o solapa vacía...")
+        st.warning("Cargando datos de móviles...")
 
 # --- COLUMNA 2: RESUMEN DE CITAS SIN ASIGNAR ---
 with col2:
