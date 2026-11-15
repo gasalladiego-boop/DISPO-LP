@@ -5,16 +5,28 @@ st.set_page_config(page_title="Panel Operativo La Plata", layout="wide")
 
 st.title("🚀 Panel de Control Operativo - La Plata")
 
-# --- CARGA DE DATOS DESDE TUS SOLAPAS DE GOOGLE SHEETS ---
+# --- CARGA DE DATOS ROBUSTA DESDE GOOGLE SHEETS ---
 @st.cache_data(ttl=60)
 def cargar_datos():
-    # ⚠️ REEMPLAZÁ 'TU_GOOGLE_SHEET_ID' por el ID real de tu planilla de Google Sheets
-    sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs/edit?hl=es&gid=1056137558#gid=1056137558"
+    sheet_id = "1Ai1ykoeHgL8W1R77pJj6wjke2Sd-GuaFq1G9bx7vmEs"
+    
+    # Usamos el parámetro gid específico de cada solapa si lo tenés, o el nombre de la solapa por exportación csv
+    # URL para Resultado_Cruce
     url_cruce = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Resultado_Cruce"
+    # URL para Pendientes_Asignar
     url_pendientes = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Pendientes_Asignar"
     
-    df_cruce = pd.read_csv(url_cruce)
-    df_pendientes = pd.read_csv(url_pendientes)
+    # Agregamos on_bad_lines='skip' o engine='python' para que las comas internas en celdas no rompan la lectura
+    try:
+        df_cruce = pd.read_csv(url_cruce, on_bad_lines='skip')
+    except Exception:
+        df_cruce = pd.DataFrame()
+        
+    try:
+        df_pendientes = pd.read_csv(url_pendientes, on_bad_lines='skip')
+    except Exception:
+        df_pendientes = pd.DataFrame()
+        
     return df_cruce, df_pendientes
 
 try:
@@ -40,7 +52,7 @@ with col1:
         else:
             st.info("Todos los móviles se encuentran ocupados en este momento.")
     else:
-        st.warning("Cargando datos de móviles...")
+        st.warning("Cargando datos de móviles o solapa vacía...")
 
 # --- COLUMNA 2: RESUMEN DE CITAS SIN ASIGNAR ---
 with col2:
@@ -50,7 +62,6 @@ with col2:
         total_pendientes = len(df_pendientes)
         st.warning(f"Total pendientes: {total_pendientes}")
         
-        # Resumen rápido por tipo de orden (Correctivo, Salud, MPI, Indispo)
         if 'Tipo de Orden' in df_pendientes.columns:
             conteo_tipos = df_pendientes['Tipo de Orden'].value_counts()
             st.write("Desglose por tipo:")
