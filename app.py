@@ -57,7 +57,7 @@ def asignar_turno(id_tec):
 if not df_cruce.empty and 'ID Técnico' in df_cruce.columns:
     df_cruce['Turno'] = df_cruce['ID Técnico'].apply(asignar_turno)
 
-# --- LIMPIEZA DE DETALLE DE TAREAS PARA MOSTRAR CORTO Y SEPARADO ---
+# --- LIMPIEZA DE DETALLE DE TAREAS ---
 def limpiar_detalle_tareas(detalle):
     if pd.isna(detalle) or not str(detalle).strip():
         return "-", "-"
@@ -73,14 +73,22 @@ def limpiar_detalle_tareas(detalle):
         
     return actividad_corta, nodo_limpio
 
-if not df_cruce.empty and 'Detalle de Tareas' in df_cruce.columns:
+if not df_cruce.empty and 'Detalle de Tareas / Motivo Ausencia' in df_cruce.columns:
+    resultados_limpios = df_cruce['Detalle de Tareas / Motivo Ausencia'].apply(limpiar_detalle_tareas)
+    df_cruce['Actividad'] = [r[0] for r in resultados_limpios]
+    df_cruce['Nodo HFC'] = [r[1] for r in resultados_limpios]
+elif not df_cruce.empty and 'Detalle de Tareas' in df_cruce.columns:
     resultados_limpios = df_cruce['Detalle de Tareas'].apply(limpiar_detalle_tareas)
     df_cruce['Actividad'] = [r[0] for r in resultados_limpios]
     df_cruce['Nodo HFC'] = [r[1] for r in resultados_limpios]
 
+# Asegurar columnas base para evitar KeyError
+for col in ['Actividad', 'Nodo HFC', 'Cant. Tareas', 'Estado Actual']:
+    if col not in df_cruce.columns:
+        df_cruce[col] = "-"
 
-# --- SECCIÓN PRINCIPAL: MÓVILES LIBRES Y OCUPADOS ---
-col1, col2 = st.columns(2)
+# --- SECCIÓN PRINCIPAL: MÓVILES LIBRES, OCUPADOS Y NO DISPONIBLES ---
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("🟢 Móviles Libres")
@@ -90,27 +98,39 @@ with col1:
             st.success(f"Disponibles: {len(df_libres)} móviles")
             st.dataframe(df_libres[['Turno', 'ID Técnico', 'Nombre', 'Rotación']], use_container_width=True, hide_index=True)
         else:
-            st.info("Todos los móviles se encuentran ocupados.")
+            st.info("No hay móviles libres.")
     else:
-        st.warning("Cargando datos de móviles...")
+        st.warning("Cargando datos...")
 
 with col2:
-    st.subheader("🚗 Móviles Ocupados (Con Actividad)")
+    st.subheader("🚗 Móviles Ocupados")
     if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
         df_ocupados = df_cruce[df_cruce['Estado Actual'].str.contains("OCUPADO", na=False)]
         if not df_ocupados.empty:
             st.warning(f"Ocupados: {len(df_ocupados)} móviles")
-            st.dataframe(
-                df_ocupados[['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Nodo HFC', 'Cant. Tareas']], 
-                use_container_width=True, 
-                hide_index=True
-            )
+            
+            # Filtro seguro de columnas existentes
+            cols_ocupados = [c for c in ['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Nodo HFC', 'Cant. Tareas'] if c in df_ocupados.columns]
+            st.dataframe(df_ocupados[cols_ocupados], use_container_width=True, hide_index=True)
         else:
             st.info("No hay móviles ocupados.")
 
+with col3:
+    st.subheader("⚠️ No Disponibles (Licencias)")
+    if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
+        df_ausentes = df_cruce[df_cruce['Estado Actual'].str.contains("NO DISPONIBLE", na=False)]
+        if not df_ausentes.empty:
+            st.error(f"Ausentes: {len(df_ausentes)} móviles")
+            
+            # Mostramos el ID, Nombre y el Estado Actual completo donde figura el motivo (ej. Licencia Gremial)
+            cols_ausentes = [c for c in ['ID Técnico', 'Nombre', 'Estado Actual'] if c in df_ausentes.columns]
+            st.dataframe(df_ausentes[cols_ausentes], use_container_width=True, hide_index=True)
+        else:
+            st.info("Sin ausencias registradas hoy.")
+
 st.markdown("---")
 
-# --- SECCIÓN DE CITAS SIN ASIGNAR (Corregido sin error de sintaxis) ---
+# --- SECCIÓN DE CITAS SIN ASIGNAR ---
 st.subheader("📋 Detalle de Citas Sin Asignar (Correctivos, Salud, MPI, Indisponibilidad)")
 
 if not df_pendientes.empty:
@@ -127,11 +147,3 @@ if not df_pendientes.empty:
         st.dataframe(df_pendientes, use_container_width=True, hide_index=True)
 else:
     st.success("¡Excelente! No hay citas pendientes sin asignar en este momento.")
-# Ejemplo de filtrado seguro y tolerante a fallos para tus DataFrames en Streamlit
-columnas_deseadas = ['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Activity', 'Nodo HFC', 'Cant. Tareas', 'Detalle de Tareas / Motivo Ausencia', 'Estado Actual']
-
-# Verificamos y seleccionamos dinámicamente solo las columnas que existan en el DataFrame
-columnas_existentes = [col for col in columnas_deseadas if col in df_ocupados.columns]
-
-# Generamos el DataFrame visual sin riesgo de KeyError
-df_ocupados_visual = df_ocupados[columnas_existentes]
