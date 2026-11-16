@@ -87,10 +87,10 @@ for col in ['Actividad', 'Nodo HFC', 'Cant. Tareas', 'Estado Actual']:
     if col not in df_cruce.columns:
         df_cruce[col] = "-"
 
-# --- SECCIÓN PRINCIPAL: MÓVILES LIBRES, OCUPADOS Y NO DISPONIBLES ---
-col1, col2, col3 = st.columns(3)
+# --- SECCIÓN 1: MÓVILES LIBRES Y OCUPADOS (Arriba en 2 columnas anchas) ---
+col_libres, col_ocupados = st.columns(2)
 
-with col1:
+with col_libres:
     st.subheader("🟢 Móviles Libres")
     if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
         df_libres = df_cruce[df_cruce['Estado Actual'].str.contains("LIBRE", na=False)]
@@ -102,35 +102,33 @@ with col1:
     else:
         st.warning("Cargando datos...")
 
-with col2:
-    st.subheader("🚗 Móviles Ocupados")
+with col_ocupados:
+    st.subheader("🚗 Móviles Ocupados (Con Actividad)")
     if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
         df_ocupados = df_cruce[df_cruce['Estado Actual'].str.contains("OCUPADO", na=False)]
         if not df_ocupados.empty:
             st.warning(f"Ocupados: {len(df_ocupados)} móviles")
-            
-            # Filtro seguro de columnas existentes
             cols_ocupados = [c for c in ['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Nodo HFC', 'Cant. Tareas'] if c in df_ocupados.columns]
             st.dataframe(df_ocupados[cols_ocupados], use_container_width=True, hide_index=True)
         else:
             st.info("No hay móviles ocupados.")
 
-with col3:
-    st.subheader("⚠️ No Disponibles (Licencias)")
-    if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
-        df_ausentes = df_cruce[df_cruce['Estado Actual'].str.contains("NO DISPONIBLE", na=False)]
-        if not df_ausentes.empty:
-            st.error(f"Ausentes: {len(df_ausentes)} móviles")
-            
-            # Mostramos el ID, Nombre y el Estado Actual completo donde figura el motivo (ej. Licencia Gremial)
-            cols_ausentes = [c for c in ['ID Técnico', 'Nombre', 'Estado Actual'] if c in df_ausentes.columns]
-            st.dataframe(df_ausentes[cols_ausentes], use_container_width=True, hide_index=True)
-        else:
-            st.info("Sin ausencias registradas hoy.")
+st.markdown("---")
+
+# --- SECCIÓN 2: NO DISPONIBLES / LICENCIAS (Abajo en ancho completo) ---
+st.subheader("⚠️ Móviles No Disponibles (Licencias y Ausencias)")
+if not df_cruce.empty and 'Estado Actual' in df_cruce.columns:
+    df_ausentes = df_cruce[df_cruce['Estado Actual'].str.contains("NO DISPONIBLE", na=False)]
+    if not df_ausentes.empty:
+        st.error(f"Total de móviles ausentes hoy: {len(df_ausentes)}")
+        cols_ausentes = [c for c in ['ID Técnico', 'Nombre', 'Rotación', 'Estado Actual'] if c in df_ausentes.columns]
+        st.dataframe(df_ausentes[cols_ausentes], use_container_width=True, hide_index=True)
+    else:
+        st.info("Sin ausencias registradas para el día de hoy.")
 
 st.markdown("---")
 
-# --- SECCIÓN DE CITAS SIN ASIGNAR ---
+# --- SECCIÓN 3: CITAS SIN ASIGNAR (Al fondo) ---
 st.subheader("📋 Detalle de Citas Sin Asignar (Correctivos, Salud, MPI, Indisponibilidad)")
 
 if not df_pendientes.empty:
