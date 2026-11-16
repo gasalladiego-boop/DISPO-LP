@@ -127,3 +127,11 @@ if not df_pendientes.empty:
         st.dataframe(df_pendientes, use_container_width=True, hide_index=True)
 else:
     st.success("¡Excelente! No hay citas pendientes sin asignar en este momento.")
+# Ejemplo de filtrado seguro y tolerante a fallos para tus DataFrames en Streamlit
+columnas_deseadas = ['Turno', 'ID Técnico', 'Nombre', 'Actividad', 'Activity', 'Nodo HFC', 'Cant. Tareas', 'Detalle de Tareas / Motivo Ausencia', 'Estado Actual']
+
+# Verificamos y seleccionamos dinámicamente solo las columnas que existan en el DataFrame
+columnas_existentes = [col for col in columnas_deseadas if col in df_ocupados.columns]
+
+# Generamos el DataFrame visual sin riesgo de KeyError
+df_ocupados_visual = df_ocupados[columnas_existentes]
